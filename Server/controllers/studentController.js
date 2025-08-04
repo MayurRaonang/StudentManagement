@@ -12,11 +12,11 @@ export const getAllStudents = async (req, res) => {
 };
 
 export const createStudent = async (req, res) => {
-  const { name, email, user_id } = req.body;
+  const { name, email, user_id, std } = req.body;
   try {
     const result = await db.query(
-      "INSERT INTO students (name, email, user_id) VALUES ($1, $2, $3) RETURNING *",
-      [name, email, user_id]
+      "INSERT INTO students (name, email, user_id, std) VALUES ($1, $2, $3, $4) RETURNING *",
+      [name, email, user_id, std]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

@@ -22,6 +22,10 @@ function Login() {
     } else if (password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
     }
+
+    if (!role) {
+      newErrors.role = "Please select a role";
+    }
     
     return newErrors;
   };
@@ -60,22 +64,25 @@ function Login() {
 
     const username = e.target.username.value.trim();
     const password = e.target.password.value;
+    const role = e.target.role.value;
 
     // Client-side validation
-    const validationErrors = validateForm(username, password);
+    const validationErrors = validateForm(username, password, role);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       setIsLoading(false);
       return;
     }
 
+    console.log("Submitting login for:", username, "Role:", role);
+
     try {
-      const response = await fetch(`${BASE_URL}/login`, {
+      const response = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, role }),
       });
 
       const data = await response.json();
@@ -90,9 +97,9 @@ function Login() {
         
         // Small delay for better UX
         setTimeout(() => {
-          if (data.role === "admin") {
+          if (role === "admin") {
             navigate("/dashboard", { replace: true });
-          } else if (data.role === "student") {
+          } else if (role === "student") {
             navigate("/student", { replace: true });
           } else {
             navigate("/", { replace: true });
@@ -204,6 +211,37 @@ function Login() {
               </span>
             )}
           </div>
+
+          <div className="form_item">
+  <select
+    id="role"
+    name="role"
+    required
+    onChange={() => handleInputChange('role')}
+    style={{
+      borderColor: errors.role ? '#ef4444' : '#e2e8f0',
+      padding: '10px',
+      width: '100%',
+      borderRadius: '4px',
+      fontSize: '14px',
+      backgroundColor: 'white',
+    }}
+  >
+    <option value="">Select Role</option>
+    <option value="admin">Admin</option>
+    <option value="student">Student</option>
+  </select>
+  {errors.role && (
+    <span style={{
+      color: '#ef4444',
+      fontSize: '12px',
+      marginTop: '4px',
+      display: 'block'
+    }}>
+      {errors.role}
+    </span>
+  )}
+</div>
           
           <button 
             type="submit" 
@@ -218,17 +256,6 @@ function Login() {
           </p>
         </form>
       </div>
-
-      <style jsx>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOut {
-          from { transform: translateX(0); opacity: 1; }
-          to { transform: translateX(100%); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

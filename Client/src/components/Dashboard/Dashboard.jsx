@@ -213,7 +213,7 @@ const Dashboard = () => {
           >
             Create New Test
           </button>
-          <button className="dashboard-action-btn secondary" onClick={() => navigate("/result")}>
+          <button className="dashboard-action-btn secondary" onClick={() => navigate("/report")}>
             Generate Report
           </button>
         </div>

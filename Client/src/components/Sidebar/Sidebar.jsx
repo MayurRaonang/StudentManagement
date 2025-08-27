@@ -35,7 +35,7 @@ export default function Sidebar() {
             <NavLink to="/dashboard" className={({ isActive }) => isActive ? "active" : ""}>Dashboard</NavLink>
           </li>
           <li>
-            <NavLink to="/student" className={({ isActive }) => isActive ? "active" : ""}>Students</NavLink>
+            <NavLink to="/testManagement" className={({ isActive }) => isActive ? "active" : ""}>Test Management</NavLink>
           </li>
           <li>
             <NavLink to="/report" className={({ isActive }) => isActive ? "active" : ""}>Report</NavLink>

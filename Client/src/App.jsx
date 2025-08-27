@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Login from './components/Login/Login.jsx';
-import StudentsTable from './components/StudentsTable/studenttable.jsx';
+import Login from './components/Login/login.jsx';
+import StudentsTable from './components/TestManagement/testManagement.jsx';
 import StudentInfo from './components/StudentInfo/StudentInfo.jsx';
 import Result from './components/Report/Report.jsx';
 import Dashboard from './components/Dashboard/Dashboard.jsx';
@@ -15,7 +15,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/student" element={<StudentsTable />} />
+        <Route path="/TEstManagement" element={<StudentsTable />} />
         <Route path="/student-info" element={<StudentInfo />} />
         <Route path="/report" element={<Result/>} />
         <Route path="/login" element={<Login />} />

@@ -1,8 +1,10 @@
 import db from '../db.js';
 
 export const getAllTests = async (req, res) => {
+    console.log("Fetching all test for userid = ", req.user.id);
+    const userId = req.user.id;
     try {
-        const result = await db.query("SELECT * FROM tests");
+        const result = await db.query("SELECT * FROM tests where user_id = $1", [userId]);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -10,14 +12,24 @@ export const getAllTests = async (req, res) => {
 };
 
 export const createTest = async (req, res) => {
-    const { subject, chapter, total_marks, test_date, user_id } = req.body;
+    const { subject, chapter, total_marks, test_date, standard } = req.body;
+    const user_id = req.user.id;
+    console.log("Creating test with data:", {
+        subject,
+        chapter,
+        total_marks,
+        test_date,
+        user_id,
+        standard
+    });
     try {
         const result = await db.query(
-            "INSERT INTO tests (subject, chapter, total_marks, test_date, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-            [subject, chapter, total_marks, test_date, user_id]
+            "INSERT INTO tests (subject, chapter, total_marks, test_date, user_id, std) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+            [subject, chapter, total_marks, test_date, user_id, standard]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
+        console.error("Error creating test:", err);
         res.status(500).json({ error: err.message });
     }
 };

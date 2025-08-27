@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../Sidebar/Sidebar";
-import "./StudentTable.css";
+import "./testManagement.css";
 import BASE_URL from "../../assets/assests";
 
 const StudentsTable = () => {
@@ -23,9 +23,11 @@ const StudentsTable = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Filter students based on search term
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students.filter(student => {
+  const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase());
+  const matchesStandard = testInfo.standard ? student.std === parseInt(testInfo.standard) : true;
+  return matchesSearch && matchesStandard;
+});
 
   // Show toast notification
   const showToast = (message, type = 'success') => {
@@ -60,7 +62,11 @@ const StudentsTable = () => {
     const fetchStudents = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${BASE_URL}/api/students/`);
+        const response = await axios.get(`${BASE_URL}/api/students/`,{
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`, // ✅ send token
+    },
+  });
         setStudents(response.data);
         setMessage({ type: 'success', text: `${response.data.length} students loaded successfully` });
       } catch (error) {
@@ -149,8 +155,14 @@ const StudentsTable = () => {
         chapter: testInfo.chapter,
         total_marks: parseInt(testInfo.total_marks),
         test_date: testInfo.date,
-        user_id: 1 // Assuming user_id is 1 for this example
-      });
+        standard: parseInt(testInfo.standard)
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // ✅ send token
+        },
+      }
+    );
       
       const testId = testResponse.data.id;
       console.log("Test created with ID:", testId);
@@ -341,6 +353,19 @@ const StudentsTable = () => {
                 onChange={handleTestChange}
                 className="students-form-input"
                 max={new Date().toISOString().split('T')[0]}
+                required
+              />
+            </div>
+
+            <div className="students-form-group">
+              <label className="students-form-label">Standard *</label>
+              <input
+                type="text"
+                name="standard"
+                value={testInfo.standard}
+                onChange={handleTestChange}
+                className="students-form-input"
+                placeholder="e.g. 12Science"
                 required
               />
             </div>

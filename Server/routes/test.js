@@ -5,11 +5,12 @@ import {
   getTestsByUser,
   getSpecificTest
 } from "../controllers/testController.js";
+import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getAllTests);
-router.post("/", createTest);
+router.get("/", authMiddleware,getAllTests);
+router.post("/",authMiddleware, createTest);
 router.get("/user/:userId", getTestsByUser);
 router.get("/check", getSpecificTest); // Assuming this is for checking tests by subject, chapter, and date
 

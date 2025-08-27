@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../Sidebar/Sidebar";
+import StudentRegister from "../StudentRegister/studentRegister.jsx";
 import "./Dashboard.css";
 import BASE_URL from "../../assets/assests";
 
@@ -61,21 +62,42 @@ const Dashboard = () => {
 
   // Fetch students
   const fetchStudents = async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/api/students/`);
-      setStudents(response.data);
-      return response.data.length;
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      showToast('Failed to load students', 'error');
+  try {
+    const token = localStorage.getItem("token"); // get token from storage
+    if (!token) {
+      showToast("No token found, please login", "error");
       return 0;
     }
-  };
+
+    const response = await axios.get(`${BASE_URL}/api/students/`, {
+      headers: {
+        Authorization: `Bearer ${token}`, // pass token to backend
+      },
+    });
+
+    setStudents(response.data);
+    return response.data.length;
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    showToast("Failed to load students", "error");
+    return 0;
+  }
+};
+
 
   // Fetch tests
   const fetchTests = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/api/tests/`);
+      const token = localStorage.getItem("token"); // get token from storage
+      if (!token) {
+        showToast("No token found, please login", "error");
+        return 0;
+      }
+      const response = await axios.get(`${BASE_URL}/api/tests/`,{
+        headers: {
+        Authorization: `Bearer ${token}`, // pass token to backend
+      },
+      });
       setTests(response.data);
       return response.data.length;
     } catch (error) {
@@ -147,7 +169,7 @@ const Dashboard = () => {
   };
 
   const navigateToTestManagement = () => {
-    navigate('/student'); // Assuming your test management route
+    navigate('/testManagement'); // Assuming your test management route
   };
 
   if (loading) {
@@ -218,6 +240,11 @@ const Dashboard = () => {
           </button>
         </div>
 
+        {/* Student Registration */}
+        <div>
+          <StudentRegister />
+        </div>
+
         {/* Tabs Navigation */}
         <div className="dashboard-tabs">
           <button 
@@ -263,7 +290,7 @@ const Dashboard = () => {
                     <th className="dashboard-table-head-cell">ID</th>
                     <th className="dashboard-table-head-cell">Name</th>
                     <th className="dashboard-table-head-cell">Email</th>
-                    <th className="dashboard-table-head-cell">Status</th>
+                    <th className="dashboard-table-head-cell">Standard</th>
                     <th className="dashboard-table-head-cell">Actions</th>
                   </tr>
                 </thead>
@@ -287,7 +314,7 @@ const Dashboard = () => {
                           <div className="dashboard-table-email">{student.email}</div>
                         </td>
                         <td className="dashboard-table-cell">
-                          <span className="dashboard-status-badge active">Active</span>
+                          <span className="dashboard-status-badge active">{student.std}</span>
                         </td>
                         <td className="dashboard-table-cell">
                           <button onClick={() => navigate("/student-info", { state: { student } })} className="dashboard-action-btn-small view" >Result</button>

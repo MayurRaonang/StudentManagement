@@ -40,7 +40,8 @@ const transformToStudentResults = (flatData) => {
 
 export const getCustomReport = async (req, res) => {
     const { from, to, std } = req.body;
-    console.log("Fetching custom report from:", from, "to:", to, "for standard:", std);
+    const userID = req.user.id; // { id, role }
+    console.log("Fetching custom report from:", from, "to:", to, "for standard:", std, "userID:", userID);
 
     if (!from || !to || !std) {
         return res.status(400).json({ error: "Please provide from date, to date, and student ID." });
@@ -49,23 +50,27 @@ export const getCustomReport = async (req, res) => {
         const result = await db.query(
   `
   SELECT
-      students.id AS student_id,
-      students.name AS student_name,
-      students.email AS student_email,
-      tests.id AS test_id,
-      tests.subject,
-      tests.chapter,
-      tests.total_marks,
-      tests.test_date,
-      marks.marks_obtained
-  FROM students
-  JOIN marks ON students.id = marks.student_id
-  JOIN tests ON marks.test_id = tests.id
-  WHERE students.std = $1
-    AND tests.test_date BETWEEN $2 AND $3
-  ORDER BY students.id, tests.test_date ASC;
+    s.id AS student_id,
+    s.name AS student_name,
+    s.email AS student_email,
+    t.id AS test_id,
+    t.subject,
+    t.chapter,
+    t.total_marks,
+    t.test_date,
+    m.marks_obtained
+FROM students s
+CROSS JOIN tests t
+LEFT JOIN marks m 
+    ON m.student_id = s.id 
+   AND m.test_id = t.id
+WHERE s.std = $1
+  AND t.test_date BETWEEN $2 AND $3
+  AND t.user_id = $4
+  AND s.user_id = $4
+ORDER BY s.id, t.test_date ASC;
   `,
-  [std, from, to]
+  [std, from, to, userID]
 );
 console.log("Custom report query result:", result.rows);
         if (result.rows.length === 0) {

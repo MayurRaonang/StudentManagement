@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+  import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../Sidebar/Sidebar";
 import "./testManagement.css";
@@ -18,6 +19,9 @@ const StudentsTable = () => {
     total_marks: "",
     date: ""
   });
+  
+  const [excelStudents, setExcelStudents] = useState([]);
+  const [rows, setRows] = useState([]); // store excel rows
 
   const [marks, setMarks] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
@@ -132,7 +136,7 @@ const StudentsTable = () => {
     setSearchTerm(e.target.value);
   };
 
-  const handleSubmit = async (e) => {
+  const handleManualSubmit  = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -204,6 +208,96 @@ const StudentsTable = () => {
     }
   };
 
+  const handleExcelSubmit = async (e) => {
+    e.preventDefault();
+    if (rows.length === 0) {
+      showToast("Please upload the Excel file first!", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const colIndex = findTestColumn(
+        testInfo.subject,
+        testInfo.chapter,
+        testInfo.date,   // "yyyy-mm-dd" from <input type="date">
+        testInfo.total_marks,
+        rows
+      );
+
+      if (colIndex === -1) {
+        showToast("Matching test not found in Excel!", "error");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // ✅ Extract marks
+      const excelResults = getStudentMarks(colIndex, rows);
+      console.log(excelResults);
+      setExcelStudents(excelResults);
+
+      // First create the test
+      const testResponse = await axios.post(`${BASE_URL}/api/tests`, {
+        subject: testInfo.subject,
+        chapter: testInfo.chapter,
+        total_marks: parseInt(testInfo.total_marks),
+        test_date: testInfo.date,
+        standard: parseInt(testInfo.standard)
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // ✅ send token
+        },
+      }
+      );
+      
+      const testId = testResponse.data.id;
+      console.log("Test created with ID:", testId);
+      
+      const markPromises = excelResults.map(student => {
+      let score = student.marks;
+
+      // Convert "A" or empty string to null
+      if (score === "A" || score === "" || score === undefined) {
+        score = null;
+      } else {
+        score = Number(score); // ensure numeric
+      }
+
+      return axios.post(`${BASE_URL}/api/marks`, {
+          studentId: student.roll,  // Or use your internal DB student_id mapping
+          testId: testId,
+          score: score
+        });
+      });
+
+
+      await Promise.all(markPromises);
+    
+      showToast('Test and marks submitted successfully!', 'success');
+      setMessage({ type: 'success', text: 'Test and marks submitted successfully!' });
+      
+      // Reset form
+      setTestInfo({
+        subject: "",
+        chapter: "",
+        total_marks: "",
+        date: ""
+      });
+      setMarks({});
+      
+    } catch (error) {
+      console.error("Error submitting test or marks:", error);
+      const errorMessage = error.response?.data?.message || 'Failed to submit test and marks';
+      showToast(errorMessage, 'error');
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setIsSubmitting(false);
+    }
+};
+
   const handleUpdateMark = async (studentId) => {
     // Validate input first
     if (!validateForm()) return;
@@ -249,6 +343,91 @@ const StudentsTable = () => {
     }
   };
 
+const handleExcelUpload = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const data = new Uint8Array(event.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    // ✅ Explicitly pick only "XII Test Result" sheet
+    const sheetName = "XII Test Result";
+    if (!workbook.Sheets[sheetName]) {
+      showToast(`Sheet "${sheetName}" not found in file!`, "error");
+      return;
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    setRows(rows);
+
+    showToast("Data imported from 'XII Test Result' successfully!", "success");
+    
+    // const colIndex = findTestColumn(testInfo.subject,
+    //   testInfo.chapter,
+    //   testInfo.date,        // already in yyyy-mm-dd from input
+    //   testInfo.total_marks,
+    //   rows
+    // );
+
+    // if (colIndex === -1) {
+    //   console.log("Test not found!");
+    // } else {
+    //   const results = getStudentMarks(colIndex, rows);
+    //   console.log(results);
+    //   setExcelStudents(results); 
+    // }
+
+  };
+
+  reader.readAsArrayBuffer(file);
+};
+
+  function findTestColumn(subject, chapter, date, totalMarks, rows) {
+      function formatDate(date) {
+        const dd = String(date.getDate()).padStart(2, "0");
+        const mm = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+        const yyyy = date.getFullYear();
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const subjects = rows[0];
+      const chapters = rows[1];
+      const dates = rows[2];
+      const totals = rows[3];
+      console.log("subjects = ", subject, " chapter = ", chapter, " date = ", date, " total marks = ", totalMarks)
+      for (let col = 0; col < subjects.length; col++) {
+        const excelEpoch = new Date(1899, 11, 30); // Excel epoch starts at 30-Dec-1899
+        const readableDate = new Date(excelEpoch.getTime() + dates[col] * 86400000);
+        const excelDateStr = formatDate(readableDate);
+        console.log("for col = ", col, " subjects = ", subjects[col], " chapter = ", chapters[col], " date = ", dates[col], " total marks = ", totals[col], " readable date = ",excelDateStr)
+        if (
+          subjects[col] === subject &&
+          chapters[col] === chapter &&
+          excelDateStr === date && // dd-mm-yyyy
+          totals[col] == totalMarks
+        ) {
+          return col;
+        }
+      }
+    return -1;
+  }
+
+  function getStudentMarks(colIndex, rows) {
+    const studentData = [];
+    for (let i = 5; i < 9; i++) {
+      const row = rows[i];
+      studentData.push({
+        roll: row[0],
+        name: row[1],
+        college: row[2],
+        marks: row[colIndex]
+      });
+    }
+
+    return studentData;
+  }
 
 
   if (loading) {
@@ -302,7 +481,7 @@ const StudentsTable = () => {
         )}
 
         {/* Test Information Form */}
-        <form onSubmit={handleSubmit} className="students-test-form">
+        <form className="students-test-form">
           <div className="students-form-grid">
             <div className="students-form-group">
               <label className="students-form-label">Subject *</label>
@@ -316,7 +495,7 @@ const StudentsTable = () => {
                 required
               />
             </div>
-            
+              
             <div className="students-form-group">
               <label className="students-form-label">Chapter *</label>
               <input
@@ -329,7 +508,7 @@ const StudentsTable = () => {
                 required
               />
             </div>
-            
+              
             <div className="students-form-group">
               <label className="students-form-label">Total Marks *</label>
               <input
@@ -343,20 +522,20 @@ const StudentsTable = () => {
                 required
               />
             </div>
-            
+              
             <div className="students-form-group">
               <label className="students-form-label">Test Date *</label>
-              <input  
+              <input
                 type="date"
                 name="date"
                 value={testInfo.date}
                 onChange={handleTestChange}
                 className="students-form-input"
-                max={new Date().toISOString().split('T')[0]}
+                max={new Date().toISOString().split("T")[0]}
                 required
               />
             </div>
-
+              
             <div className="students-form-group">
               <label className="students-form-label">Standard *</label>
               <input
@@ -369,16 +548,34 @@ const StudentsTable = () => {
                 required
               />
             </div>
+              
+            <div className="students-upload-container">
+              <label className="students-form-label">Upload Excel Marks</label>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.xlsm"
+                onChange={handleExcelUpload}
+              />
+            </div>
           </div>
-
-          {/* Students Table */}
+              
+          {/* Students Table (for manual entry) */}
           <div className="students-table-section">
             <div className="students-table-header">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "16px",
+                }}
+              >
                 <div>
                   <h3 className="students-table-title">Student Marks Entry</h3>
                   <p className="students-table-description">
-                    Enter marks for each student (Total: {filteredStudents.length} of {students.length} students)
+                    Enter marks for each student (Total: {filteredStudents.length} of{" "}
+                    {students.length} students)
                   </p>
                 </div>
                 <div className="students-search-container">
@@ -393,7 +590,7 @@ const StudentsTable = () => {
                 </div>
               </div>
             </div>
-            
+                    
             <div className="students-table-wrapper">
               <table className="students-data-table">
                 <thead className="students-table-head">
@@ -405,12 +602,22 @@ const StudentsTable = () => {
                     <th className="students-table-head-cell">Actions</th>
                   </tr>
                 </thead>
-                
+                    
                 <tbody className="students-table-body">
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="students-table-cell" style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                        {searchTerm ? `No students found matching "${searchTerm}"` : 'No students available'}
+                      <td
+                        colSpan="5"
+                        className="students-table-cell"
+                        style={{
+                          textAlign: "center",
+                          padding: "40px",
+                          color: "#6b7280",
+                        }}
+                      >
+                        {searchTerm
+                          ? `No students found matching "${searchTerm}"`
+                          : "No students available"}
                       </td>
                     </tr>
                   ) : (
@@ -429,14 +636,22 @@ const StudentsTable = () => {
                           <input
                             type="number"
                             value={marks[student.id] || ""}
-                            onChange={(e) => handleMarkChange(student.id, e.target.value)}
+                            onChange={(e) =>
+                              handleMarkChange(student.id, e.target.value)
+                            }
                             className="students-marks-input"
                             min="0"
                             max={testInfo.total_marks || 100}
                             placeholder="0"
                           />
                           {testInfo.total_marks && (
-                            <span style={{fontSize: '12px', color: '#6b7280', marginLeft: '8px'}}>
+                            <span
+                              style={{
+                                fontSize: "12px",
+                                color: "#6b7280",
+                                marginLeft: "8px",
+                              }}
+                            >
                               / {testInfo.total_marks}
                             </span>
                           )}
@@ -457,16 +672,29 @@ const StudentsTable = () => {
               </table>
             </div>
           </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`students-submit-btn ${isSubmitting ? 'loading' : ''}`}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Test & Marks'}
-          </button>
+                
+          {/* Submit Buttons */}
+          <div style={{ display: "flex", gap: "16px", marginTop: "24px" }}>
+            <button
+              type="button"
+              onClick={handleManualSubmit }
+              disabled={isSubmitting}
+              className={`students-submit-btn ${isSubmitting ? "loading" : ""}`}
+            >
+              {isSubmitting ? "Submitting..." : "Submit Manual Marks"}
+            </button>
+                
+            <button
+              type="button"
+              onClick={handleExcelSubmit}
+              disabled={isSubmitting}
+              className={`students-submit-btn ${isSubmitting ? "loading" : ""}`}
+            >
+              {isSubmitting ? "Submitting..." : "Submit Excel Marks"}
+            </button>
+          </div>
         </form>
+
       </div>
 
       

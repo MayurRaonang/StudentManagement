@@ -6,6 +6,7 @@ import StudentsTable from './components/TestManagement/testManagement.jsx';
 import StudentInfo from './components/StudentInfo/StudentInfo.jsx';
 import Result from './components/Report/Report.jsx';
 import Dashboard from './components/Dashboard/Dashboard.jsx';
+import Register from './components/Register/register.jsx';
 
 
 import './App.css'
@@ -20,6 +21,7 @@ function App() {
         <Route path="/report" element={<Result/>} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/register" element = {<Register/>}/>
       </Routes>
 
     </BrowserRouter>

@@ -29,7 +29,8 @@ CREATE TABLE tests (
 
 CREATE TABLE marks (
   id SERIAL PRIMARY KEY,
-  student_id INTEGER REFERENCES students(id),
-  test_id INTEGER REFERENCES tests(id),
-  marks_obtained INTEGER
+  student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+  test_id INTEGER REFERENCES tests(id) ON DELETE CASCADE NOT NULL,
+  marks_obtained INTEGER,
+  CONSTRAINT unique_student_test UNIQUE (student_id, test_id)
 );

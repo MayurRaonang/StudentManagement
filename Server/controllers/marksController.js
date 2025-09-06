@@ -53,15 +53,16 @@ export const updateMark = async (req, res) => {
     console.log("Updating mark:", { studentId, testId, score });
     try {
         const result = await db.query(
-            "UPDATE marks SET marks_obtained = $1 WHERE student_id = $2 AND test_id = $3 RETURNING *",
-            [score, studentId, testId]
+            `INSERT INTO marks (student_id, test_id, marks_obtained)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (student_id, test_id)
+             DO UPDATE SET marks_obtained = EXCLUDED.marks_obtained
+             RETURNING *`,
+            [studentId, testId, score]
         );
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: "Mark not found for this student and test" });
-        }
+
         res.json(result.rows[0]);
-    }
-    catch (err) {
+    } catch (err) {
         console.error("Error updating mark:", err);
         res.status(500).json({ error: err.message });
     }

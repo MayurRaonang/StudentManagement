@@ -190,11 +190,15 @@ const generatePDFContent = () => {
   };
 
   const calculateTotalMarks = (tests) => {
-    return tests.reduce((sum, test) => sum + test.marksObtained, 0);
+    return (tests || []).reduce(
+    (sum, t) => sum + (t.marksObtained == null ? 0 : t.marksObtained), 0
+  );
   };
 
   const calculateTotalPossible = (tests) => {
-    return tests.reduce((sum, test) => sum + test.totalMarks, 0);
+    return (tests || []).reduce(
+    (sum, t) => sum + (t.marksObtained == null ? 0 : t.totalMarks), 0
+  );
   };
 
   const calculatePercentage = (obtained, total) => {
@@ -242,6 +246,7 @@ const generatePDFContent = () => {
         
         body {
           font-family: 'Arial', sans-serif;
+          font-size: 14px;
           line-height: 1.4;
           color: #333;
           background: white;
@@ -270,7 +275,7 @@ const generatePDFContent = () => {
         }
         
         .header h1 {
-          font-size: 24px;
+          font-size: 28px;
           font-weight: bold;
           letter-spacing: 2px;
           margin-bottom: 5px;
@@ -321,7 +326,7 @@ const generatePDFContent = () => {
           border: 1px solid #000;
           padding: 6px 4px;
           text-align: center;
-          font-size: 10px;
+          font-size: 12px;
           vertical-align: middle;
         }
         
@@ -353,7 +358,7 @@ const generatePDFContent = () => {
           border: 1px solid #000;
           padding: 8px;
           text-align: center;
-          font-size: 11px;
+          font-size: 13px;
         }
         
         .summary-table th {
@@ -393,11 +398,14 @@ const generatePDFContent = () => {
         }
         
         .signature-section {
-          position: absolute;
-          bottom: 20mm;
-          right: 20mm;
+          margin-top: 60px;
           text-align: center;
-          font-size: 11px;
+          font-size: 13px;
+        }
+        .signature-line {
+          border-top: 1px solid #000;
+          width: 150px;
+          margin: 0 auto;
         }
         
         .chart-placeholder {
@@ -533,7 +541,7 @@ const totalAttended = (student.tests || []).filter(
             <td style="text-align: left; padding-left: 8px;">${test.chapter}</td>
             <td>${test.marksObtained == null ? 'A' : test.marksObtained}</td>
             <td>${highestScore}</td>
-            <td>${test.totalMarks}</td>
+            <td>${test.marksObtained == null ? 0 : test.totalMarks}</td>
           </tr>
         `;
       });
@@ -622,17 +630,11 @@ const totalAttended = (student.tests || []).filter(
       </div>
       
       <!-- Performance Chart Placeholder -->
-      <div class="chart-placeholder">
-        Performance Chart - Marks Obtained vs Test Numbers
-        <br>
-        (Chart visualization would be implemented with actual charting library)
-      </div>
+      
       
       <div class="signature-section">
-        <div style="margin-bottom: 40px;">
-          <div style="border-top: 1px solid #000; width: 150px; margin: 0 auto;"></div>
-          <div style="margin-top: 5px;">Stamp & Signature of Authority</div>
-        </div>
+        <div class="signature-line"></div>
+        <div style="margin-top: 5px;">Stamp & Signature of Authority</div>
       </div>
       
     </div>
